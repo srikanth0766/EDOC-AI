@@ -1,0 +1,37 @@
+{
+    "name": "python-error-detector",
+    "displayName": "Python Error Detector",
+    "description": "AI-based Python code error detection using CodeBERT",
+    "version": "1.0.0",
+    "publisher": "local",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Linters"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "python-error-detector.analyze",
+                "title": "Analyze Python Code Error"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.85.0",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "axios": "^1.6.5"
+    }
+}

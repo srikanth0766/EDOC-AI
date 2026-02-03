@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}' https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js;">
+    <title>AI Code Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 16px;
+            background-color: var(--vscode-sideBar-background);
+            border-bottom: 1px solid var(--vscode-panel-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--vscode-foreground);
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 2px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        .message.assistant .message-content {
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+        }
+
+        .message.user .message-content {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+
+        /* Code Blocks */
+        .message-content pre {
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            border: 1px solid var(--vscode-panel-border);
+        }
+
+        .message-content code {
+            font-family: var(--vscode-editor-font-family);
+            font-size: 13px;
+        }
+
+        .message-content p {
+            margin: 8px 0;
+        }
+
+        .message-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Issue Sections */
+        .issue-section {
+            margin: 12px 0;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            color: var(--vscode-foreground);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .issue-icon {
+            font-size: 16px;
+        }
+
+        .issue-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .issue-item {
+            padding: 8px 12px;
+            margin: 6px 0;
+            background-color: var(--vscode-textCodeBlock-background);
+            border-left: 3px solid var(--vscode-textLink-foreground);
+            border-radius: 4px;
+        }
+
+        .issue-item.error {
+            border-left-color: var(--vscode-errorForeground);
+        }
+
+        .issue-item.warning {
+            border-left-color: var(--vscode-editorWarning-foreground);
+        }
+
+        .issue-item.info {
+            border-left-color: var(--vscode-textLink-foreground);
+        }
+
+        /* Loading Indicator */
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--vscode-foreground);
+            opacity: 0.4;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        .loading-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+
+            40% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--vscode-descriptionForeground);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-description {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Scrollbar */
+        .chat-container::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--vscode-editor-background);
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--vscode-scrollbarSlider-background);
+            border-radius: 5px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: var(--vscode-scrollbarSlider-hoverBackground);
+        }
+
+        /* Chat Input */
+        .chat-input-container {
+            padding: 12px 16px;
+            background-color: var(--vscode-sideBar-background);
+            border-top: 1px solid var(--vscode-panel-border);
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            min-height: 36px;
+            max-height: 120px;
+            padding: 8px 12px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 6px;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            resize: none;
+            overflow-y: auto;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .chat-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .send-button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+
+        .send-button:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .send-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Control Flow Graph */
+        .control-flow-section {
+            margin: 16px 0;
+            padding: 16px;
+            background-color: var(--vscode-textCodeBlock-background);
+            border-radius: 8px;
+            border: 1px solid var(--vscode-panel-border);
+        }
+
+        .control-flow-title {
+            font-weight: 600;
+            color: var(--vscode-foreground);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .mermaid-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        .control-flow-issues {
+            margin-bottom: 12px;
+        }
+
+        .control-flow-issue {
+            padding: 8px 12px;
+            margin: 6px 0;
+            background-color: var(--vscode-input-background);
+            border-left: 3px solid var(--vscode-errorForeground);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .control-flow-issue.warning {
+            border-left-color: var(--vscode-editorWarning-foreground);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" nonce="{{nonce}}"></script>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-icon">🤖</div>
+        <div>
+            <div class="header-title">AI Code Assistant</div>
+            <div class="header-subtitle">Powered by Llama 3.2 (Offline)</div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <div class="empty-state">
+            <div class="empty-state-icon">💬</div>
+            <div class="empty-state-title">Ready to analyze your code</div>
+            <div class="empty-state-description">
+                Run the "Analyze Python Code Error" command to get started.<br>
+                I'll analyze your code for errors, logic issues, and optimizations.
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-container">
+        <textarea id="chatInput" class="chat-input" placeholder="Ask a follow-up question about the analysis..."
+            rows="1" disabled></textarea>
+        <button id="sendButton" class="send-button" disabled>Send</button>
+    </div>
+
+    <script nonce="{{nonce}}">
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        const vscode = acquireVsCodeApi();
+        const chatContainer = document.getElementById('chatContainer');
+
+        // Listen for messages from the extension
+        window.addEventListener('message', event => {
+            const message = event.data;
+
+            switch (message.type) {
+                case 'clearChat':
+                    clearChat();
+                    break;
+                case 'addUserMessage':
+                    addMessage('user', message.text);
+                    break;
+                case 'addAssistantMessage':
+                    addMessage('assistant', message.text);
+                    enableChatInput();
+                    break;
+                case 'showLoading':
+                    showLoading();
+                    break;
+                case 'hideLoading':
+                    hideLoading();
+                    break;
+                case 'showAnalysis':
+                    showAnalysis(message.data);
+                    break;
+                case 'showError':
+                    showError(message.text);
+                    break;
+                case 'enableChatInput':
+                    enableChatInput();
+                    break;
+            }
+        });
+
+        function clearChat() {
+            chatContainer.innerHTML = '';
+        }
+
+        function addMessage(role, text) {
+            // Remove empty state if present
+            const emptyState = chatContainer.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.innerHTML = formatText(text);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            chatContainer.appendChild(messageDiv);
+
+            scrollToBottom();
+        }
+
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.id = 'loadingMessage';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = '🤖';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+
+            loadingDiv.appendChild(avatar);
+            loadingDiv.appendChild(content);
+            chatContainer.appendChild(loadingDiv);
+
+            scrollToBottom();
+        }
+
+        function hideLoading() {
+            const loadingMsg = document.getElementById('loadingMessage');
+            if (loadingMsg) {
+                loadingMsg.remove();
+            }
+        }
+
+        function showAnalysis(data) {
+            hideLoading();
+
+            // Remove empty state if present
+            const emptyState = chatContainer.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = '🤖';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+
+            let html = '';
+
+            // Summary
+            if (data.summary) {
+                html += `<p><strong>📋 Analysis Summary</strong></p>`;
+                html += `<p>${escapeHtml(data.summary)}</p>`;
+            }
+
+            // Compile-time errors
+            if (data.compile_time && data.compile_time.errors && data.compile_time.errors.length > 0) {
+                html += `<div class="issue-section">`;
+                html += `<div class="issue-title"><span class="issue-icon">❌</span> Compile-Time Errors</div>`;
+                html += `<ul class="issue-list">`;
+                data.compile_time.errors.forEach(error => {
+                    html += `<li class="issue-item error">Line ${error.line}: ${escapeHtml(error.message)}</li>`;
+                });
+                html += `</ul></div>`;
+            } else if (data.compile_time && data.compile_time.status === 'valid') {
+                html += `<p>✅ No compile-time errors detected</p>`;
+            }
+
+            // Runtime risks
+            if (data.runtime_risks && data.runtime_risks.length > 0) {
+                html += `<div class="issue-section">`;
+                html += `<div class="issue-title"><span class="issue-icon">⚠️</span> Runtime Risk Predictions</div>`;
+                html += `<ul class="issue-list">`;
+                data.runtime_risks.forEach(risk => {
+                    const confidence = (risk.confidence * 100).toFixed(1);
+                    html += `<li class="issue-item warning">${escapeHtml(risk.error_type)} (${confidence}% confidence)</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            // Logical concerns
+            if (data.logical_concerns && data.logical_concerns.length > 0) {
+                html += `<div class="issue-section">`;
+                html += `<div class="issue-title"><span class="issue-icon">🔍</span> Logical Concerns</div>`;
+                html += `<ul class="issue-list">`;
+                data.logical_concerns.forEach(concern => {
+                    html += `<li class="issue-item info">${escapeHtml(concern)}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            // Optimizations
+            if (data.optimizations && data.optimizations.length > 0) {
+                html += `<div class="issue-section">`;
+                html += `<div class="issue-title"><span class="issue-icon">💡</span> Optimization Suggestions</div>`;
+                html += `<ul class="issue-list">`;
+                data.optimizations.forEach(opt => {
+                    const lineInfo = opt.line > 0 ? `Line ${opt.line}: ` : '';
+                    html += `<li class="issue-item info">${lineInfo}${escapeHtml(opt.suggestion)} <em>(${escapeHtml(opt.impact)})</em></li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            // Control Flow Graph (NEW)
+            if (data.control_flow && data.control_flow.has_issues) {
+                html += `<div class="control-flow-section">`;
+                html += `<div class="control-flow-title">📊 Control Flow Analysis</div>`;
+
+                // Show issues
+                if (data.control_flow.issues && data.control_flow.issues.length > 0) {
+                    html += `<div class="control-flow-issues">`;
+                    data.control_flow.issues.forEach(issue => {
+                        const severityClass = issue.severity === 'error' ? '' : 'warning';
+                        html += `<div class="control-flow-issue ${severityClass}">`;
+                        html += `Line ${issue.line}: ${escapeHtml(issue.description)}`;
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                // Show graph
+                if (data.control_flow.mermaid_code) {
+                    html += `<div class="mermaid-container">`;
+                    html += `<pre class="mermaid">${escapeHtml(data.control_flow.mermaid_code)}</pre>`;
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            }
+
+            if (!html) {
+                html = '<p>✨ Your code looks great! No issues detected.</p>';
+            }
+
+            content.innerHTML = html;
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            chatContainer.appendChild(messageDiv);
+
+            // Render Mermaid diagrams (NEW)
+            if (data.control_flow && data.control_flow.mermaid_code) {
+                setTimeout(() => {
+                    mermaid.run({
+                        querySelector: '.mermaid'
+                    });
+                }, 100);
+            }
+
+            scrollToBottom();
+
+            // Enable chat input for follow-up questions
+            enableChatInput();
+        }
+
+        function showError(text) {
+            hideLoading();
+            addMessage('assistant', `❌ Error: ${text}`);
+        }
+
+        function formatText(text) {
+            return escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Chat input handling
+        const chatInput = document.getElementById('chatInput');
+        const sendButton = document.getElementById('sendButton');
+
+        // Auto-resize textarea
+        chatInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+
+            // Enable/disable send button based on input
+            sendButton.disabled = !this.value.trim();
+        });
+
+        // Send message on button click
+        sendButton.addEventListener('click', sendMessage);
+
+        // Send message on Enter (Shift+Enter for new line)
+        chatInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage('user', message);
+
+            // Clear input and reset height
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            sendButton.disabled = true;
+
+            // Disable input while waiting for response
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Send to extension
+            vscode.postMessage({
+                type: 'sendChatMessage',
+                text: message
+            });
+        }
+
+        function enableChatInput() {
+            chatInput.disabled = false;
+            chatInput.focus();
+        }
+
+        function disableChatInput() {
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+        }
+
+        // Notify extension that webview is ready
+        vscode.postMessage({ type: 'ready' });
+    </script>
+</body>
+
+</html>
