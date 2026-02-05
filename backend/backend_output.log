@@ -1,0 +1,17 @@
+INFO:     Started server process [13385]
+INFO:     Waiting for application startup.
+/Users/ramkey03/Desktop/compiler design project/.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:942: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8000): [errno 48] address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+Starting up... Loading model...
+Loading model: microsoft/codebert-base...
+Model loaded successfully!
+Model loaded successfully!
+Initializing code review agent...
+Agent initialized and ready!
+Initializing chat handler...
+Chat handler ready!
+Shutting down...

@@ -58,7 +58,8 @@ class PredictResponse(BaseModel):
 
 class ReviewRequest(BaseModel):
     """Request model for /review endpoint."""
-    code: str = Field(..., description="Python source code to analyze")
+    code: str = Field(..., description="Source code to analyze")
+    language: str = Field(default="python", description="Programming language (python, javascript, typescript, etc.)")
     include_logic_analysis: bool = Field(True, description="Include LLM-based logic analysis")
     include_optimizations: bool = Field(True, description="Include optimization suggestions")
     include_control_flow: bool = Field(True, description="Include control flow graph analysis")
@@ -175,6 +176,7 @@ async def review_code(request: ReviewRequest):
         # Run comprehensive review
         result = agent.review_code(
             code=request.code,
+            language=request.language,
             include_logic_analysis=request.include_logic_analysis,
             include_optimizations=request.include_optimizations,
             include_control_flow=request.include_control_flow

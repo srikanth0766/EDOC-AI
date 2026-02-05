@@ -424,7 +424,26 @@
         // Initialize Mermaid
         mermaid.initialize({
             startOnLoad: false,
-            theme: 'default',
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#000',
+                primaryBorderColor: '#1976d2',
+                lineColor: '#424242',
+                secondaryColor: '#fff3e0',
+                tertiaryColor: '#f3e5f5',
+                background: '#ffffff',
+                mainBkg: '#e3f2fd',
+                secondBkg: '#fff3e0',
+                tertiaryBkg: '#f3e5f5',
+                nodeBorder: '#1976d2',
+                clusterBkg: '#fafafa',
+                clusterBorder: '#9e9e9e',
+                defaultLinkColor: '#424242',
+                titleColor: '#000',
+                edgeLabelBackground: '#ffffff',
+                nodeTextColor: '#000'
+            },
             flowchart: {
                 useMaxWidth: true,
                 htmlLabels: true,
@@ -545,12 +564,6 @@
 
             let html = '';
 
-            // Summary
-            if (data.summary) {
-                html += `<p><strong>📋 Analysis Summary</strong></p>`;
-                html += `<p>${escapeHtml(data.summary)}</p>`;
-            }
-
             // Compile-time errors
             if (data.compile_time && data.compile_time.errors && data.compile_time.errors.length > 0) {
                 html += `<div class="issue-section">`;
@@ -619,7 +632,8 @@
                 // Show graph
                 if (data.control_flow.mermaid_code) {
                     html += `<div class="mermaid-container">`;
-                    html += `<pre class="mermaid">${escapeHtml(data.control_flow.mermaid_code)}</pre>`;
+                    // Don't escape mermaid code - it needs to be raw for rendering
+                    html += `<pre class="mermaid">${data.control_flow.mermaid_code}</pre>`;
                     html += `</div>`;
                 }
 

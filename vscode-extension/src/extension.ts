@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register the "Analyze Python Code Error" command
     const disposable = vscode.commands.registerCommand(
-        'python-error-detector.analyze',
+        'code-error-detector.analyze',
         async () => {
             await showChatbotAndAnalyze(context);
         }
@@ -83,10 +83,14 @@ async function showChatbotAndAnalyze(context: vscode.ExtensionContext) {
         return;
     }
 
-    // Check if the file is a Python file
+    // Check if the file language is supported
     const document = editor.document;
-    if (document.languageId !== 'python') {
-        vscode.window.showWarningMessage('Please open a Python file to analyze');
+    const supportedLanguages = ['python', 'javascript', 'typescript', 'javascriptreact', 'typescriptreact'];
+
+    if (!supportedLanguages.includes(document.languageId)) {
+        vscode.window.showWarningMessage(
+            `Language "${document.languageId}" is not yet supported. Supported languages: ${supportedLanguages.join(', ')}`
+        );
         return;
     }
 
@@ -146,16 +150,17 @@ async function showChatbotAndAnalyze(context: vscode.ExtensionContext) {
         );
     }
 
-    // If panel already exists, just trigger analysis
-    if (chatPanel) {
-        analyzeCode(code, chatPanel);
-    }
+    // Store the code for when webview sends 'ready' message
+    currentCode = code;
 }
 
 /**
  * Analyze code and send results to chatbot
  */
 async function analyzeCode(code: string, panel: vscode.WebviewPanel) {
+    // Clear previous analysis
+    panel.webview.postMessage({ type: 'clearChat' });
+
     // Show loading indicator
     panel.webview.postMessage({ type: 'showLoading' });
 
@@ -170,7 +175,8 @@ async function analyzeCode(code: string, panel: vscode.WebviewPanel) {
             {
                 code,
                 include_logic_analysis: true,
-                include_optimizations: true
+                include_optimizations: true,
+                include_control_flow: true
             },
             {
                 headers: { 'Content-Type': 'application/json' },

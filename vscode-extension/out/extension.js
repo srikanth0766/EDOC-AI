@@ -64,7 +64,7 @@ let chatHistory = [];
 function activate(context) {
     console.log('AI Code Assistant extension is now active');
     // Register the "Analyze Python Code Error" command
-    const disposable = vscode.commands.registerCommand('python-error-detector.analyze', async () => {
+    const disposable = vscode.commands.registerCommand('code-error-detector.analyze', async () => {
         await showChatbotAndAnalyze(context);
     });
     context.subscriptions.push(disposable);
@@ -79,10 +79,11 @@ async function showChatbotAndAnalyze(context) {
         vscode.window.showErrorMessage('No file is currently open');
         return;
     }
-    // Check if the file is a Python file
+    // Check if the file language is supported
     const document = editor.document;
-    if (document.languageId !== 'python') {
-        vscode.window.showWarningMessage('Please open a Python file to analyze');
+    const supportedLanguages = ['python', 'javascript', 'typescript', 'javascriptreact', 'typescriptreact'];
+    if (!supportedLanguages.includes(document.languageId)) {
+        vscode.window.showWarningMessage(`Language "${document.languageId}" is not yet supported. Supported languages: ${supportedLanguages.join(', ')}`);
         return;
     }
     // Get the code content
@@ -123,15 +124,15 @@ async function showChatbotAndAnalyze(context) {
             }
         }, undefined, context.subscriptions);
     }
-    // If panel already exists, just trigger analysis
-    if (chatPanel) {
-        analyzeCode(code, chatPanel);
-    }
+    // Store the code for when webview sends 'ready' message
+    currentCode = code;
 }
 /**
  * Analyze code and send results to chatbot
  */
 async function analyzeCode(code, panel) {
+    // Clear previous analysis
+    panel.webview.postMessage({ type: 'clearChat' });
     // Show loading indicator
     panel.webview.postMessage({ type: 'showLoading' });
     // Store code for chat context
@@ -142,7 +143,8 @@ async function analyzeCode(code, panel) {
         const response = await axios_1.default.post(REVIEW_ENDPOINT, {
             code,
             include_logic_analysis: true,
-            include_optimizations: true
+            include_optimizations: true,
+            include_control_flow: true
         }, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 30000 // 30 second timeout

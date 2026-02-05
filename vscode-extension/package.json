@@ -1,7 +1,7 @@
 {
-    "name": "python-error-detector",
-    "displayName": "Python Error Detector",
-    "description": "AI-based Python code error detection using CodeBERT",
+    "name": "code-error-detector",
+    "displayName": "AI Code Analyzer",
+    "description": "AI-based code analysis with visual error explanations for Python, JavaScript, TypeScript, and more",
     "version": "1.0.0",
     "publisher": "local",
     "engines": {
@@ -15,11 +15,18 @@
     "contributes": {
         "commands": [
             {
-                "command": "python-error-detector.analyze",
-                "title": "Analyze Python Code Error"
+                "command": "code-error-detector.analyze",
+                "title": "Analyze Code with AI"
             }
         ]
     },
+    "activationEvents": [
+        "onLanguage:python",
+        "onLanguage:javascript",
+        "onLanguage:typescript",
+        "onLanguage:javascriptreact",
+        "onLanguage:typescriptreact"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",

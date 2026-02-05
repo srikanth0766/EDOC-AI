@@ -54,9 +54,17 @@ class ControlFlowResult:
     
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization"""
+        # Handle issues that might already be dicts (from universal analyzer)
+        issues_list = []
+        for issue in self.issues:
+            if isinstance(issue, dict):
+                issues_list.append(issue)
+            else:
+                issues_list.append(asdict(issue))
+        
         return {
             'has_issues': self.has_issues,
-            'issues': [asdict(issue) for issue in self.issues],
+            'issues': issues_list,
             'graph_nodes': [asdict(node) for node in self.graph_nodes],
             'graph_edges': [asdict(edge) for edge in self.graph_edges],
             'mermaid_code': self.mermaid_code
@@ -64,40 +72,68 @@ class ControlFlowResult:
 
 
 class ControlFlowAnalyzer:
-    """Analyzes Python code for control flow issues"""
+    """Analyzes code for control flow issues across multiple languages"""
     
-    def analyze(self, code: str) -> ControlFlowResult:
+    def analyze(self, code: str, language: str = "python") -> ControlFlowResult:
         """
         Main analysis entry point.
         Returns control flow issues and graph visualization data.
         
         Args:
-            code: Python source code as string
+            code: Source code as string
+            language: Programming language (python, javascript, typescript, etc.)
             
         Returns:
             ControlFlowResult with issues and graph data
         """
+        # Import here to avoid circular dependency
+        from analyzers.universal_ast_analyzer import UniversalASTAnalyzer
+        
+        tree = None  # Initialize for later use
+        
         try:
-            tree = ast.parse(code)
-        except SyntaxError:
-            # If code doesn't parse, return empty result
-            return ControlFlowResult(
-                has_issues=False,
-                issues=[],
-                graph_nodes=[],
-                graph_edges=[],
-                mermaid_code=""
-            )
-        
-        issues = []
-        
-        # Detect infinite loops
-        infinite_loops = self._detect_infinite_loops(tree)
-        issues.extend(infinite_loops)
-        
-        # Detect unreachable code
-        unreachable = self._detect_unreachable_code(tree)
-        issues.extend(unreachable)
+            # Use universal analyzer for supported languages
+            analyzer = UniversalASTAnalyzer(language)
+            
+            # Find infinite loops using universal analyzer
+            infinite_loops = analyzer.find_infinite_loops(code)
+            
+            # Find unreachable code using universal analyzer
+            unreachable = analyzer.find_unreachable_code(code)
+            
+            # Combine all issues
+            issues = infinite_loops + unreachable
+            
+            # For Python, also parse the tree for graph generation
+            if language.lower() == 'python':
+                try:
+                    tree = ast.parse(code)
+                except SyntaxError:
+                    pass
+            
+        except ValueError:
+            # Language not supported by universal analyzer, fall back to Python ast
+            try:
+                tree = ast.parse(code)
+            except SyntaxError:
+                # If code doesn't parse, return empty result
+                return ControlFlowResult(
+                    has_issues=False,
+                    issues=[],
+                    graph_nodes=[],
+                    graph_edges=[],
+                    mermaid_code=""
+                )
+            
+            issues = []
+            
+            # Detect infinite loops (Python fallback)
+            infinite_loops = self._detect_infinite_loops(tree)
+            issues.extend(infinite_loops)
+            
+            # Detect unreachable code (Python fallback)
+            unreachable = self._detect_unreachable_code(tree)
+            issues.extend(unreachable)
         
         # Generate graph for first issue found (MVP: one graph per analysis)
         nodes = []
@@ -187,15 +223,32 @@ class ControlFlowAnalyzer:
     def _generate_graph_for_issue(
         self, 
         tree: ast.AST, 
-        issue: ControlFlowIssue,
+        issue,  # Can be dict or ControlFlowIssue
         code: str
     ) -> Tuple[List[CFGNode], List[CFGEdge]]:
         """Generate control flow graph for a specific issue"""
         nodes = []
         edges = []
         
+        # Determine strict issue type and convert if necessary
+        if isinstance(issue, dict):
+            issue = ControlFlowIssue(
+                type=issue.get('type', 'unknown'),
+                line=issue.get('line', 0),
+                description=issue.get('description', ''),
+                severity=issue.get('severity', 'warning')
+            )
+        
+        # If no AST tree is available (non-Python languages), generate generic graph
+        if tree is None:
+            return self._generate_generic_graph(issue)
+            
         # Find the problematic node in AST
         problem_node = self._find_node_at_line(tree, issue.line)
+        
+        if problem_node is None:
+             # Fallback if node not found
+             return self._generate_generic_graph(issue)
         
         if isinstance(problem_node, ast.While):
             nodes, edges = self._generate_while_loop_graph(problem_node, issue)
@@ -205,6 +258,35 @@ class ControlFlowAnalyzer:
             # Generic graph for unreachable code
             nodes, edges = self._generate_unreachable_code_graph(tree, issue, code)
         
+        return nodes, edges
+
+    def _generate_generic_graph(self, issue: ControlFlowIssue) -> Tuple[List[CFGNode], List[CFGEdge]]:
+        """Generate generic graph when AST is not available"""
+        nodes = []
+        edges = []
+        
+        if issue.type == 'infinite_loop':
+             nodes = [
+                 CFGNode('start', 'entry', 'Start', issue.line),
+                 CFGNode('condition', 'condition', 'Loop Condition', issue.line, is_problematic=True, problem_description=issue.description),
+                 CFGNode('body', 'block', 'Loop Body', issue.line + 1),
+             ]
+             edges = [
+                 CFGEdge('start', 'condition'),
+                 CFGEdge('condition', 'body', 'true'),
+                 CFGEdge('body', 'condition', 'repeat'),
+             ]
+        elif issue.type == 'unreachable_code':
+             nodes = [
+                 CFGNode('start', 'entry', 'Start', max(1, issue.line - 2)),
+                 CFGNode('statement', 'block', 'Return/Break Statement', max(1, issue.line - 1)),
+                 CFGNode('unreachable', 'unreachable', 'Unreachable Code', issue.line, is_problematic=True, problem_description=issue.description)
+             ]
+             edges = [
+                 CFGEdge('start', 'statement'),
+                 CFGEdge('statement', 'unreachable', 'never reached')
+             ]
+             
         return nodes, edges
     
     def _generate_while_loop_graph(
