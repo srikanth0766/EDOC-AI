@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A³SC — Sprint Analytics Dashboard</title>
+    <meta name="description" content="Agile-Aware Agentic Smell-Aware Compiler — Sprint-level code quality analytics" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">⚗️</span>
+                <div>
+                    <span class="logo-title">A³SC</span>
+                    <span class="logo-sub">Sprint Analytics</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btn-refresh" class="btn btn-ghost" onclick="loadData()">↺ Refresh</button>
+                <button id="btn-log-sprint" class="btn btn-primary" onclick="openLogModal()">+ Log Sprint</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Main Content ───────────────────────────────────────────────── -->
+    <main class="main">
+
+        <!-- Summary Cards -->
+        <section class="cards-row" id="summary-cards">
+            <div class="card stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-body">
+                    <div class="stat-value" id="stat-sprints">—</div>
+                    <div class="stat-label">Total Sprints</div>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">🦨</div>
+                <div class="stat-body">
+                    <div class="stat-value" id="stat-smells">—</div>
+                    <div class="stat-label">Smells Detected</div>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">🔧</div>
+                <div class="stat-body">
+                    <div class="stat-value" id="stat-refactored">—</div>
+                    <div class="stat-label">Smells Refactored</div>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-body">
+                    <div class="stat-value" id="stat-avg">—</div>
+                    <div class="stat-label">Avg Smells / Sprint</div>
+                </div>
+            </div>
+            <div class="card stat-card" id="trend-card">
+                <div class="stat-icon" id="trend-icon">—</div>
+                <div class="stat-body">
+                    <div class="stat-value" id="stat-trend">—</div>
+                    <div class="stat-label">Trend</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Row -->
+        <section class="charts-row">
+            <!-- Sprint History -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <h2>Smell History Over Sprints</h2>
+                    <span class="badge" id="badge-history">Loading…</span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="chart-history"></canvas>
+                </div>
+            </div>
+
+            <!-- Technical Debt Accumulation -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <h2>Technical Debt Accumulation</h2>
+                    <span class="badge badge-warn">Cumulative Smells</span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="chart-debt"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Row: Heatmap + Risk Panel -->
+        <section class="charts-row">
+            <!-- Module Heatmap -->
+            <div class="card heatmap-card">
+                <div class="chart-header">
+                    <h2>Sprint Details</h2>
+                    <span class="badge badge-info">Per-Sprint Breakdown</span>
+                </div>
+                <div class="table-wrapper">
+                    <table id="sprint-table">
+                        <thead>
+                            <tr>
+                                <th>Sprint</th>
+                                <th>Smells</th>
+                                <th>Refactored</th>
+                                <th>Net Debt</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sprint-tbody">
+                            <tr>
+                                <td colspan="5" class="empty-row">No sprint data yet. Click "+ Log Sprint" to add one.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Risk Predictor Panel -->
+            <div class="card risk-card">
+                <div class="chart-header">
+                    <h2>Sprint Risk Predictor</h2>
+                    <span class="badge badge-error">Next Sprint</span>
+                </div>
+                <div class="risk-body">
+                    <div class="risk-gauge-wrapper">
+                        <canvas id="chart-risk" width="200" height="200"></canvas>
+                        <div class="risk-label-overlay" id="risk-percent">—</div>
+                    </div>
+                    <div class="risk-meta">
+                        <div class="risk-meta-row">
+                            <span class="meta-label">Predicted Smells</span>
+                            <span class="meta-val" id="risk-predicted">—</span>
+                        </div>
+                        <div class="risk-meta-row">
+                            <span class="meta-label">Threshold</span>
+                            <span class="meta-val" id="risk-threshold">10</span>
+                        </div>
+                        <div class="risk-meta-row">
+                            <span class="meta-label">Trend</span>
+                            <span class="meta-val" id="risk-trend">—</span>
+                        </div>
+                    </div>
+                    <div class="risk-recommendation" id="risk-recommendation">
+                        Run 2+ sprints to get a risk prediction.
+                    </div>
+                    <button class="btn btn-secondary full-width" onclick="runRiskPrediction()">Predict Now</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Smell Analysis -->
+        <section class="card analyze-card">
+            <div class="chart-header">
+                <h2>Quick Smell Analysis</h2>
+                <span class="badge badge-info">Paste Code → Detect Smells</span>
+            </div>
+            <div class="analyze-body">
+                <textarea id="code-input" placeholder="# Paste your Python code here…" spellcheck="false"></textarea>
+                <button class="btn btn-primary" onclick="analyzeCode()">🔍 Analyse</button>
+                <div id="smell-results" class="smell-results hidden"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ── Log Sprint Modal ───────────────────────────────────────────── -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>Log Sprint Data</h3>
+            <label>Sprint ID <input id="m-sprint-id" type="text" placeholder="Sprint-1" /></label>
+            <label>Smells Detected <input id="m-smell-count" type="number" min="0" value="0" /></label>
+            <label>Smells Refactored <input id="m-refactor-count" type="number" min="0" value="0" /></label>
+            <label>Module <input id="m-module" type="text" placeholder="backend" /></label>
+            <div class="modal-btns">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="logSprint()">Log Sprint</button>
+            </div>
+            <div id="modal-msg" class="modal-msg"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

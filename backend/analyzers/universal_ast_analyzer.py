@@ -20,7 +20,7 @@ except ImportError:
 
 
 @dataclass
-class SyntaxError:
+class CodeSyntaxError:
     """Represents a syntax error found in code"""
     line: int
     column: int

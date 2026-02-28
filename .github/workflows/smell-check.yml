@@ -1,0 +1,49 @@
+name: A³SC Smell Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  smell-check:
+    name: Code Smell Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn pydantic requests
+
+      - name: Start A³SC backend
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          # Start in background without CodeBERT model for CI speed
+          SKIP_MODEL=true python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 8  # Wait for FastAPI to be ready
+        env:
+          PYTHONPATH: .
+
+      - name: Run smell gate on changed Python files
+        run: |
+          python scripts/smell_gate.py backend/ --threshold 0.85 --ci
+        env:
+          BACKEND_URL: "http://localhost:8000"
+
+      - name: Upload smell report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smell-report
+          path: smell_report.json
+          if-no-files-found: ignore

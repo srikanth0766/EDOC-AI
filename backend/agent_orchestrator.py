@@ -4,11 +4,12 @@ Coordinates multiple analysis tools to provide intelligent code feedback.
 """
 
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from analyzers.compile_checker import CompileTimeChecker, CompileTimeResult
 from analyzers.logic_analyzer import LogicAnalyzer
 from analyzers.optimization_analyzer import OptimizationAnalyzer
 from analyzers.control_flow_analyzer import ControlFlowAnalyzer
+from analyzers.smell_detector import SmellDetector
 from llm_providers.base import LLMProvider
 from llm_providers.factory import create_llm_provider
 from model import ErrorDetectionModel
@@ -32,6 +33,7 @@ class ReviewResult:
     optimizations: List[Dict]
     control_flow: Optional[Dict]
     summary: str
+    smells: List[Dict] = field(default_factory=list)
 
 
 class CodeReviewAgent:
@@ -61,6 +63,7 @@ class CodeReviewAgent:
         self.compile_checker = CompileTimeChecker()
         self.runtime_model = runtime_model
         self.control_flow_analyzer = ControlFlowAnalyzer()
+        self.smell_detector = SmellDetector()
         
         # Create LLM provider if not provided
         if llm_provider is None:
@@ -190,12 +193,20 @@ class CodeReviewAgent:
             if control_flow_result.has_issues:
                 control_flow_dict = control_flow_result.to_dict()
         
-        # Step 6: Generate summary
+        # Step 6: Code smell detection
+        smells = []
+        try:
+            smells = self.smell_detector.detect_to_dict(code)
+        except Exception as e:
+            print(f"Smell detection error: {e}")
+
+        # Step 7: Generate summary
         summary = self._generate_summary(
             compile_result,
             runtime_risks,
             logical_concerns,
-            optimizations
+            optimizations,
+            smells
         )
         
         return ReviewResult(
@@ -204,7 +215,8 @@ class CodeReviewAgent:
             logical_concerns=logical_concerns,
             optimizations=optimizations,
             control_flow=control_flow_dict,
-            summary=summary
+            summary=summary,
+            smells=smells
         )
     
     def _predict_runtime_errors(self, code: str) -> List[RuntimeRisk]:
@@ -285,37 +297,44 @@ class CodeReviewAgent:
         compile_result: CompileTimeResult,
         runtime_risks: List[RuntimeRisk],
         logical_concerns: List[str],
-        optimizations: List[Dict]
+        optimizations: List[Dict],
+        smells: List[Dict] = None
     ) -> str:
         """
         Generate human-readable summary of review.
-        
+
         Args:
             compile_result: Compile-time check result
             runtime_risks: Runtime error predictions
             logical_concerns: Logical issues found
             optimizations: Optimization suggestions
-            
+            smells: Code smells detected
+
         Returns:
             Summary string
         """
         parts = []
-        
+        smells = smells or []
+
         if compile_result.has_errors:
             parts.append(f"{len(compile_result.errors)} compile-time error(s)")
         else:
             parts.append("✓ No compile-time errors")
-        
+
         if runtime_risks:
             parts.append(f"{len(runtime_risks)} runtime risk(s)")
-        
+
         if logical_concerns:
             parts.append(f"{len(logical_concerns)} logical concern(s)")
-        
+
         if optimizations:
             parts.append(f"{len(optimizations)} optimization(s) available")
-        
-        if not runtime_risks and not logical_concerns and not optimizations:
+
+        high_conf_smells = [s for s in smells if s.get("confidence", 0) > 0.6]
+        if high_conf_smells:
+            parts.append(f"{len(high_conf_smells)} code smell(s) detected")
+
+        if not runtime_risks and not logical_concerns and not optimizations and not high_conf_smells:
             return "✓ Code looks good! No issues detected."
-        
+
         return " | ".join(parts)

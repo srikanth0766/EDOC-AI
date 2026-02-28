@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  # ─── Main A³SC Backend ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: a3sc-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./dashboard:/app/../dashboard:ro
+    environment:
+      - PYTHONPATH=/app
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b}
+    depends_on:
+      - ml-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── ML Smell Service ─────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: a3sc-ml-service
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: a3sc-network

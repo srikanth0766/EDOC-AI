@@ -1,0 +1,128 @@
+{
+  "generated_at": "2026-02-28T15:35:53.967386",
+  "overall_integrity_score": 0.9463,
+  "acceptance_threshold": 0.8,
+  "accepted": true,
+  "categories": {
+    "1_compiler_core": {
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "total": 44,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "2_feature_extraction": {
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "total": 25,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "3_ml_model": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 1,
+      "total": 10,
+      "pass_rate": 0.9,
+      "status": "PASS"
+    },
+    "4_smell_detector": {
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "total": 26,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "5_refactor_safety": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "total": 17,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "6_ci_gatekeeper": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "total": 7,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "7_agile_risk": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "total": 19,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "8_performance": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "9_security": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 13,
+      "pass_rate": 0.6154,
+      "status": "PASS"
+    },
+    "10_data_integrity": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "total": 12,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "11_chaos": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 12,
+      "pass_rate": 0.75,
+      "status": "PASS"
+    },
+    "12_e2e": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "pass_rate": 0.2222,
+      "status": "PASS"
+    },
+    "13_regression": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "total": 20,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    },
+    "14_observability": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 14,
+      "pass_rate": 0.7143,
+      "status": "PASS"
+    },
+    "15_acceptance": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "total": 7,
+      "pass_rate": 1.0,
+      "status": "PASS"
+    }
+  }
+}

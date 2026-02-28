@@ -1,192 +1,146 @@
-# AI-Based Python Code Analyzer with Visual Error Explanation
+# A³SC: Agentic AST-aware Smart Compiler
 
-A VS Code extension that combines AI-powered error detection with visual control flow graphs to help developers understand **WHY** errors occur, not just **WHAT** they are.
+A next-generation, AI-powered system that goes beyond compiling code. A³SC understands code architecture, detects smells, automatically refactors with AI, enforces CI/CD quality gates, and predicts agile technical debt risks using statistical modeling.
 
-## 🎯 Project Overview
+## 🌟 Key Capabilities
 
-This system provides comprehensive Python code analysis:
+1. **Universal AST Analysis**: Parses Python and JavaScript into a unified AST schema.
+2. **Code Smell Detection**: Identifies 6 structural code smells with confidence scores using heuristic thresholds (Long Method, God Class, Feature Envy, Deep Nesting, Large Parameter List, High Complexity).
+3. **Agentic Refactoring**: Fixes code automatically using an open-source local LLM (Ollama), prioritizing syntax preservation and semantic correctness.
+4. **Agile Risk Prediction**: Uses historical sprint data to forecast future technical debt risk via a Bayesian stochastic model.
+5. **CI/CD Gatekeeper**: Blocks PRs that exceed defined code smell thresholds before they merge.
+6. **Comprehensive Test Suite**: Proven reliability via a 15-category, 50+ case automated validation suite.
 
-- **AI-Based Analysis**: CodeBERT model for runtime error prediction, LLM-based logic analysis
-- **Visual Explanation**: Control flow graphs showing program behavior (infinite loops, unreachable code)
-- **Interactive Chat**: Ask follow-up questions about your code and analysis results
-- **Backend**: FastAPI server orchestrating multiple analyzers
-- **Frontend**: VS Code extension with rich chatbot interface
+---
 
-## 📁 Project Structure
+## 🏗️ Architecture
 
-```
-compiler design project/
-├── backend/                 # Python FastAPI backend
-│   ├── main.py             # FastAPI server with /predict endpoint
-│   ├── model.py            # CodeBERT model wrapper
-│   ├── requirements.txt    # Python dependencies
-│   └── README.md           # Backend documentation
-│
-└── vscode-extension/       # VS Code extension
-    ├── src/
-    │   └── extension.ts    # Extension logic
-    ├── package.json        # Extension manifest
-    ├── tsconfig.json       # TypeScript config
-    └── README.md           # Extension documentation
-```
+The system is divided into two parts:
+- **Backend**: Python 3.10+ / FastAPI application powering the AST analysis, LLM agent, metrics extraction, and REST API.
+- **Frontend**: Vanilla HTML/JS/CSS dashboard providing an interactive IDE-like experience, analytics charts (Chart.js), and system settings.
 
-## 🚀 Quick Start
+### Core Modules (Backend)
+- `analyzers.universal_ast_analyzer`: Converts source code to AST.
+- `analyzers.feature_extractor`: Calculates complexity, CBO, LOC, WMC.
+- `analyzers.smell_detector`: Evaluates extracted features against smell thresholds.
+- `refactor_agent.refactor_agent`: Orchestrates the LLM to apply clean code principles.
+- `agile_risk.sprint_risk_model`: Calculates sprint risk probability.
+- `main.py`: The FastAPI server exposing endpoints.
 
-### 1. Set Up Backend
+---
 
-```bash
-# Navigate to backend directory
-cd backend
+## 🚀 Step-by-Step Setup Guide
 
-# Install Python dependencies
-pip install -r requirements.txt
+### Prerequisites
+- **Python 3.10+** installed
+- **pip** (Python package installer)
+- **Ollama** installed locally (required for the Refactoring Agent)
+- Modern Web Browser (Chrome, Firefox, Safari)
 
-# Start the server (will download CodeBERT model on first run)
-python main.py
-```
+---
 
-The backend will be running on `http://localhost:8000`
+### Step 1: Install & Start Ollama (Required for AI Refactoring)
 
-### 2. Set Up VS Code Extension
+A³SC uses local LLMs to keep your code private and avoid API fees.
+1. Download and install Ollama from [ollama.com](https://ollama.com/).
+2. Open your terminal and pull the recommended model (`qwen2.5:0.5b` or `llama3.2`):
+   ```bash
+   ollama pull qwen2.5:0.5b
+   ```
+3. Ensure the Ollama service is running in the background.
 
-```bash
-# Navigate to extension directory
-cd vscode-extension
+---
 
-# Install Node.js dependencies
-npm install
+### Step 2: Setup the Backend
 
-# Compile TypeScript
-npm run compile
+1. **Open a terminal** and navigate to the project directory:
+   ```bash
+   cd "path/to/compiler design project/backend"
+   ```
 
-# Open in VS Code
-code .
-```
+2. **Create a Python Virtual Environment** (recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use: .\venv\Scripts\activate
+   ```
 
-### 3. Run the Extension
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-1. In VS Code, press `F5` to launch the Extension Development Host
-2. In the new window, open a Python file
-3. Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
-4. Type and select: **"Analyze Python Code Error"**
-5. View the prediction in the notification
+4. **Start the FastAPI Server**:
+   ```bash
+   uvicorn main:app --reload --port 8000
+   ```
+   *The server should now be running at `http://localhost:8000`.*
 
-## 💡 Example Usage
+---
 
-Create a Python file with potential errors:
+### Step 3: Run the Comprehensive Validation Suite
 
-```python
-# example.py
-x = [1, 2, 3]
-print(x[10])  # This will cause an IndexError
+A³SC includes a massive 15-category validation suite proving its integrity. You can run all tests and generate a report using the master script.
 
-import nonexistent_module  # This will cause an ImportError
-```
+1. Keep the FastAPI server running and open a **new terminal tab**.
+2. Navigate to the backend directory:
+   ```bash
+   cd "path/to/compiler design project/backend"
+   ```
+3. Run the automated test suite:
+   ```bash
+   bash run_all_tests.sh
+   ```
+   *This command runs the unit tests, integration tests, E2E tests, and chaos tests, generating an `integrity_report.txt` and a `test_report.json` in the `backend/tests/` folder.*
 
-Run the "Analyze Python Code Error" command to see predictions like:
+---
 
-```
-Predicted Error: IndexError (confidence: 72.34%)
-```
+### Step 4: Open the Frontend Dashboard (Analytics & Quick Tests)
 
-## 🔧 System Requirements
+A³SC includes a web-based dashboard for Sprint Risk Analytics and Quick Code Smell Analysis. It is automatically served by the backend!
 
-### Backend
-- Python 3.9 or higher
-- ~2GB RAM (for CodeBERT model)
-- ~500MB disk space (for model download)
+1. Open your web browser.
+2. Navigate to: **[http://localhost:8000/dashboard/](http://localhost:8000/dashboard/)**
+3. **Usage:**
+   - **Log Sprints:** Record the number of smells and fixes across sprints.
+   - **Analytics & Risk Prediction:** View visual charts showing your system's cumulative technical debt and risk predictions for future sprints.
+   - **Quick Smell Analysis:** Paste snippets of code into the textarea at the bottom to instantly detect code smells (Long Methods, God Classes, etc.).
 
-### Extension
-- Visual Studio Code 1.85.0 or higher
-- Node.js 18.0 or higher
+---
 
-## 📚 Documentation
+### Step 5: Using the VS Code Extension (IDE & Auto-Refactoring)
 
-- [Backend README](backend/README.md) - API documentation, setup, and troubleshooting
-- [Extension README](vscode-extension/README.md) - Installation, usage, and development guide
+The true power of A³SC is its editor integration via the VS Code extension, which provides inline code review and LLM-powered refactoring.
 
-## 🎓 Technical Details
+1. Open VS Code and navigate to the `vscode-extension` folder.
+2. Open a terminal in that folder and run:
+   ```bash
+   npm install
+   ```
+3. Press **F5** in VS Code to launch the Extension Development Host.
+4. In the new VS Code window, open any Python file.
+5. Bring up the Command Palette (`Cmd+Shift+P` on Mac) and type **"Analyze Code with AI"**.
+6. The extension will securely send your code to the local backend, detect runtime/logical errors, extract code smells, and provide **AI Refactoring suggestions** using your local Ollama model.
 
-### Backend Architecture
+---
 
-- **Framework**: FastAPI for REST API
-- **Model**: Microsoft CodeBERT (pretrained transformer)
-- **Classifier**: Simple linear layer (randomly initialized for MVP)
-- **Endpoint**: POST `/predict` accepts code, returns error type and confidence
+## 🧪 The 15-Category Test Suite
 
-### Extension Architecture
+To ensure absolute reliability, A³SC implements a rigorous validation suite covering:
 
-- **Language**: TypeScript
-- **API**: VS Code Extension API
-- **HTTP Client**: Axios
-- **Interface**: Command-based (no UI panels)
+1. **Compiler Core**: Lexical, Syntax, and AST integrity checks.
+2. **Feature Extraction Validation**: Verifies cyclomatic complexity, CBO, WMC accuracy.
+3. **ML Model Validation**: Tests the error detection logic bounds.
+4. **Smell Detector**: Validates threshold logic for all 6 smell types.
+5. **Refactor Safety**: Verifies that LLM output is always valid Python (Syntax Preservation) and implements Rollback on failure.
+6. **CI/CD Gatekeeper**: Simulates 50 synthetic Pull Requests, enforcing block/pass logic.
+7. **Agile Risk Prediction**: Validates the mathematical stability of the Bayesian stochastic drift model.
+8. **Performance & Scalability**: Memory limits and cyclomatic extraction on high-branch functions.
+9. **Security**: Verifies that user code is *parsed* as AST but never *executed*, preventing command injection.
+10. **Data Integrity**: Validates the local datastore's atomic write limits.
+11. **Chaos Testing**: Injects simulated failures (LLM timeout, DB crash) to prove graceful degradation without 500 errors.
+12. **End-to-End System Tests**: Full pipeline from raw string to sprint analytics via HTTP.
+13. **Regression Suite**: Validates output against 5 curated Baseline files.
+14. **Observability Validation**: Logs, metrics, and API health checks.
+15. **Acceptance Validator**: Weights all previous steps and mandates a final system Integrity Score ≥ 80%.
 
-### Analysis Features
-
-**AI-Based Detection:**
-- Compile-time errors (syntax, imports)
-- Runtime error prediction (IndexError, RuntimeError, ImportError, etc.)
-- Logic issues and edge cases (LLM-powered)
-- Code optimization suggestions
-
-**Visual Error Explanation (NEW):**
-- Control flow graph generation using Mermaid.js
-- Infinite loop detection (`while True` without break)
-- Loop variable not updated warnings
-- Unreachable code detection (after return/break)
-- Interactive flowcharts showing WHY code fails
-
-## ⚠️ Current Capabilities
-
-This system provides:
-
-- ✅ Full end-to-end AI-based code analysis
-- ✅ Visual control flow graphs for error explanation
-- ✅ Interactive chat interface for follow-up questions
-- ✅ Multiple analysis layers (compile, runtime, logic, optimization, control flow)
-- ✅ Offline LLM support (Ollama)
-- ⚠️ CodeBERT classifier needs training for accurate runtime predictions
-- ⚠️ Python-only support (multi-language planned)
-
-For production use, the classifier would need to be trained on labeled data.
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-- Check Python version: `python --version` (need 3.9+)
-- Ensure dependencies installed: `pip install -r requirements.txt`
-- Check if port 8000 is available
-
-### Extension command not found
-- Ensure backend is running first
-- Reload VS Code window: `Cmd+R` / `Ctrl+R`
-- Check Extension Host output: View → Output → Extension Host
-
-### Connection refused error
-- Verify backend is running: `curl http://localhost:8000`
-- Check firewall settings
-- Ensure backend URL is `http://localhost:8000`
-
-## 📝 Success Criteria
-
-- ✅ Backend runs with one command
-- ✅ VS Code extension installs and runs
-- ✅ Clicking the command shows an error prediction
-- ✅ Entire system works locally without manual file copying
-- ✅ Clear separation of backend and extension
-- ✅ Fast startup time
-- ✅ Minimal configuration
-
-## 🔮 Future Enhancements
-
-- Train the classifier on real error datasets
-- Add error localization (highlight specific lines)
-- Support multiple error types per file
-- Add auto-fix suggestions
-- Integrate with VS Code diagnostics
-- Background monitoring mode
-- Support for more programming languages
-
-## 📄 License
-
-This is an educational MVP project.
+You can find the implementation of these tests in `backend/tests/`.

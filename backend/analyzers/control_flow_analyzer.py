@@ -102,12 +102,28 @@ class ControlFlowAnalyzer:
             unreachable = analyzer.find_unreachable_code(code)
             
             # Combine all issues
-            issues = infinite_loops + unreachable
+            raw_issues = infinite_loops + unreachable
+            issues = []
+            for issue in raw_issues:
+                if isinstance(issue, dict):
+                    issues.append(ControlFlowIssue(
+                        type=issue.get('type', 'unknown'),
+                        line=issue.get('line', 0),
+                        description=issue.get('description', ''),
+                        severity=issue.get('severity', 'warning')
+                    ))
+                else:
+                    issues.append(issue)
             
             # For Python, also parse the tree for graph generation
             if language.lower() == 'python':
                 try:
                     tree = ast.parse(code)
+                    # Add python-specific pattern checks that universal analyzer misses
+                    py_issues = self._detect_infinite_loops(tree)
+                    for py_issue in py_issues:
+                        if py_issue.type != 'infinite_loop':  # Universal analyzer already finds these
+                            issues.append(py_issue)
                 except SyntaxError:
                     pass
             
