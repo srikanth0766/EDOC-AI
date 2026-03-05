@@ -85,94 +85,50 @@ class CodeReviewAgent:
         include_optimizations: bool = True,
         include_control_flow: bool = True
     ) -> ReviewResult:
-        """
-        Perform comprehensive code review.
-        
-        This is the main orchestration method that runs all analysis steps.
-        
-        Args:
-            code: Source code to review
-            language: Programming language (python, javascript, typescript, etc.)
-            include_logic_analysis: Whether to run LLM-based logic analysis
-            include_optimizations: Whether to generate optimization suggestions
-            include_control_flow: Whether to run control flow analysis
-            
-        Returns:
-            ReviewResult with all analysis results
-        """
+        """Perform comprehensive code review."""
         # Step 1: Syntax/Compile-time check
-        compile_result = None  # Initialize for all languages
+        compile_dict, compile_result = self._check_syntax(code, language)
         
-        if language.lower() == "python":
-            # Use Python-specific compile checker
-            compile_result = self.compile_checker.check(code)
-            compile_dict = self.compile_checker.to_dict(compile_result)
-            
-            # If compile errors, return early (can't analyze further)
-            if compile_result.has_errors:
-                return ReviewResult(
-                    compile_time=compile_dict,
-                    runtime_risks=[],
-                    logical_concerns=[],
-                    optimizations=[],
-                    control_flow=None,
-                    summary=f"Found {len(compile_result.errors)} compile-time error(s)"
-                )
-        else:
-            # For non-Python languages, use universal analyzer for syntax check
-            from analyzers.universal_ast_analyzer import UniversalASTAnalyzer
-            from analyzers.compile_checker import CompileTimeResult, CompileError  # Import for mock object
-            
-            try:
-                analyzer = UniversalASTAnalyzer(language)
-                syntax_result = analyzer.check_syntax(code)
-                if syntax_result['status'] == 'error':
-                    # Convert dict errors to CompileError instances
-                    error_objects = [
-                        CompileError(
-                            type=err.get('type', 'SyntaxError'),
-                            line=err.get('line', 0),
-                            column=err.get('column', 0),
-                            message=err.get('message', 'Syntax error'),
-                            suggestion=""  # No suggestions for now
-                        )
-                        for err in syntax_result['errors']
-                    ]
-                    
-                    compile_dict = {
-                        'status': 'error',
-                        'errors': syntax_result['errors'],
-                        'has_errors': True
-                    }
-                    # Create mock compile_result for summary generation
-                    compile_result = CompileTimeResult(
-                        status="error",
-                        errors=error_objects  # Use CompileError instances
-                    )
-                    return ReviewResult(
-                        compile_time=compile_dict,
-                        runtime_risks=[],
-                        logical_concerns=[],
-                        optimizations=[],
-                        control_flow=None,
-                        summary=f"Found {len(syntax_result['errors'])} syntax error(s)"
-                    )
-                else:
-                    compile_dict = {'status': 'valid', 'errors': [], 'has_errors': False}
-                    # Create mock compile_result with no errors
-                    compile_result = CompileTimeResult(
-                        status="ok",
-                        errors=[]
-                    )
-            except ValueError:
-                # Language not supported, skip syntax check
-                compile_dict = {'status': 'unknown', 'errors': [], 'has_errors': False}
-                compile_result = CompileTimeResult(
-                    status="ok",
-                    errors=[]
-                )
+        # If compile errors, return early (can't analyze further)
+        if compile_result.has_errors:
+            return self._build_error_result(compile_dict, compile_result.errors)
 
+        # Steps 2-6: Additional analyses
+        runtime_risks, logical_concerns, optimizations, control_flow_dict, smells = self._run_additional_analysis(
+            code, language, include_logic_analysis, include_optimizations, include_control_flow
+        )
+
+        # Step 7: Generate summary
+        summary = self._generate_summary(
+            compile_result, runtime_risks, logical_concerns, optimizations, smells
+        )
         
+        return self._build_success_result(
+            compile_dict, runtime_risks, logical_concerns, optimizations, control_flow_dict, summary, smells
+        )
+        
+    def _build_error_result(self, compile_dict, errors):
+        return ReviewResult(
+            compile_time=compile_dict,
+            runtime_risks=[],
+            logical_concerns=[],
+            optimizations=[],
+            control_flow=None,
+            summary=f"Found {len(errors)} compile-time/syntax error(s)"
+        )
+        
+    def _build_success_result(self, compile_dict, runtime_risks, logical_concerns, optimizations, control_flow_dict, summary, smells):
+        return ReviewResult(
+            compile_time=compile_dict,
+            runtime_risks=[asdict(r) for r in runtime_risks],
+            logical_concerns=logical_concerns,
+            optimizations=optimizations,
+            control_flow=control_flow_dict,
+            summary=summary,
+            smells=smells
+        )
+        
+    def _run_additional_analysis(self, code: str, language: str, include_logic_analysis: bool, include_optimizations: bool, include_control_flow: bool):
         # Step 2: Runtime error prediction (your existing model)
         runtime_risks = self._predict_runtime_errors(code)
         
@@ -199,25 +155,40 @@ class CodeReviewAgent:
             smells = self.smell_detector.detect_to_dict(code)
         except Exception as e:
             print(f"Smell detection error: {e}")
+            
+        return runtime_risks, logical_concerns, optimizations, control_flow_dict, smells
 
-        # Step 7: Generate summary
-        summary = self._generate_summary(
-            compile_result,
-            runtime_risks,
-            logical_concerns,
-            optimizations,
-            smells
-        )
+    def _check_syntax(self, code: str, language: str):
+        """Perform syntax checking depending on language."""
+        compile_result = None
         
-        return ReviewResult(
-            compile_time=compile_dict,
-            runtime_risks=[asdict(r) for r in runtime_risks],
-            logical_concerns=logical_concerns,
-            optimizations=optimizations,
-            control_flow=control_flow_dict,
-            summary=summary,
-            smells=smells
-        )
+        if language.lower() == "python":
+            compile_result = self.compile_checker.check(code)
+            compile_dict = self.compile_checker.to_dict(compile_result)
+        else:
+            from analyzers.universal_ast_analyzer import UniversalASTAnalyzer
+            from analyzers.compile_checker import CompileTimeResult, CompileError
+            try:
+                analyzer = UniversalASTAnalyzer(language)
+                syntax_result = analyzer.check_syntax(code)
+                if syntax_result['status'] == 'error':
+                    error_objects = [
+                        CompileError(
+                            type=err.get('type', 'SyntaxError'), line=err.get('line', 0),
+                            column=err.get('column', 0), message=err.get('message', 'Syntax error'), suggestion=""
+                        ) for err in syntax_result['errors']
+                    ]
+                    compile_dict = {
+                        'status': 'error', 'errors': syntax_result['errors'], 'has_errors': True
+                    }
+                    compile_result = CompileTimeResult(status="error", errors=error_objects)
+                else:
+                    compile_dict = {'status': 'valid', 'errors': [], 'has_errors': False}
+                    compile_result = CompileTimeResult(status="ok", errors=[])
+            except ValueError:
+                compile_dict = {'status': 'unknown', 'errors': [], 'has_errors': False}
+                compile_result = CompileTimeResult(status="ok", errors=[])
+        return compile_dict, compile_result
     
     def _predict_runtime_errors(self, code: str) -> List[RuntimeRisk]:
         """

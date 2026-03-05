@@ -36,52 +36,7 @@ def review_code(code: str, description: str, include_logic: bool = False, includ
         
         if response.status_code == 200:
             result = response.json()
-            
-            # Compile-time results
-            print("\n🔍 COMPILE-TIME ANALYSIS:")
-            if result["compile_time"]["status"] == "ok":
-                print("  ✅ No syntax errors")
-            else:
-                print("  ❌ Errors found:")
-                for err in result["compile_time"]["errors"]:
-                    print(f"     Line {err['line']}: {err['type']} - {err['message']}")
-                    print(f"     💡 {err['suggestion']}")
-            
-            # Runtime risks
-            print("\n⚠️  RUNTIME RISK ANALYSIS:")
-            if result["runtime_risks"]:
-                for risk in result["runtime_risks"]:
-                    print(f"  • {risk['type']} (confidence: {risk['confidence']:.2%})")
-                    print(f"    {risk['explanation']}")
-                    if risk['line'] > 0:
-                        print(f"    Line: {risk['line']}")
-            else:
-                print("  ✅ No runtime risks detected")
-            
-            # Logical concerns
-            if include_logic:
-                print("\n🧠 LOGICAL ANALYSIS:")
-                if result["logical_concerns"]:
-                    for concern in result["logical_concerns"]:
-                        print(f"  • {concern}")
-                else:
-                    print("  ✅ No logical concerns")
-            
-            # Optimizations
-            if include_opt:
-                print("\n💡 OPTIMIZATION SUGGESTIONS:")
-                if result["optimizations"]:
-                    for opt in result["optimizations"]:
-                        print(f"  • [{opt['type'].upper()}] Line {opt['line']}: {opt['suggestion']}")
-                        print(f"    Impact: {opt['impact']}")
-                        if opt.get('example'):
-                            print(f"    Example: {opt['example']}")
-                else:
-                    print("  ✅ No optimizations needed")
-            
-            # Summary
-            print(f"\n📊 SUMMARY: {result['summary']}")
-            
+            print_review_result(result, include_logic, include_opt)
         else:
             print(f"❌ Error: {response.status_code}")
             print(response.text)
@@ -90,6 +45,55 @@ def review_code(code: str, description: str, include_logic: bool = False, includ
         print(f"❌ Request failed: {e}")
     
     print("\n" + "─" * 70)
+
+
+def print_review_result(result: Dict, include_logic: bool, include_opt: bool):
+    """Print the parsed review result."""
+    # Compile-time results
+    print("\n🔍 COMPILE-TIME ANALYSIS:")
+    if result["compile_time"]["status"] == "ok":
+        print("  ✅ No syntax errors")
+    else:
+        print("  ❌ Errors found:")
+        for err in result["compile_time"]["errors"]:
+            print(f"     Line {err['line']}: {err['type']} - {err['message']}")
+            print(f"     💡 {err['suggestion']}")
+    
+    # Runtime risks
+    print("\n⚠️  RUNTIME RISK ANALYSIS:")
+    if result["runtime_risks"]:
+        for risk in result["runtime_risks"]:
+            print(f"  • {risk['type']} (confidence: {risk['confidence']:.2%})")
+            print(f"    {risk['explanation']}")
+            if risk['line'] > 0:
+                print(f"    Line: {risk['line']}")
+    else:
+        print("  ✅ No runtime risks detected")
+    
+    # Logical concerns
+    if include_logic:
+        print("\n🧠 LOGICAL ANALYSIS:")
+        if result["logical_concerns"]:
+            for concern in result["logical_concerns"]:
+                print(f"  • {concern}")
+        else:
+            print("  ✅ No logical concerns")
+    
+    # Optimizations
+    if include_opt:
+        print("\n💡 OPTIMIZATION SUGGESTIONS:")
+        if result["optimizations"]:
+            for opt in result["optimizations"]:
+                print(f"  • [{opt['type'].upper()}] Line {opt['line']}: {opt['suggestion']}")
+                print(f"    Impact: {opt['impact']}")
+                if opt.get('example'):
+                    print(f"    Example: {opt['example']}")
+        else:
+            print("  ✅ No optimizations needed")
+    
+    # Summary
+    print(f"\n📊 SUMMARY: {result['summary']}")
+
 
 # ============================================================================
 # DEMO STARTS HERE
